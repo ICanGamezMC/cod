@@ -26,9 +26,10 @@ fn main() {
 
 
 fn helper(id:u8){
-
+    let ansi_error: &str = "\x1b[1;31m";
+    let ansi_escape: &str = "\x1b[0m";
     if id == 1 {
-        println!("This is a helper")
+        println!("{}This is a helper{}",ansi_error,ansi_escape)
     }
 
 }
