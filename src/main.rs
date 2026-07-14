@@ -3,10 +3,22 @@ use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let builder = &args[1];
+
     //dbg!(args);
+    
+    if args.len() > 1 {
+        // This is the main build command. 
     if &args[1].to_lowercase() == "build" {
+        if args.len() > 2 {
+            match args[2].as_str() {
+            "test" => println!("Nah"),
+            _ => println!("ok")
+        }
+        }
+        
         println!("YES")
     }
-    println!("{}",builder)
+
+    }
+    
 }
