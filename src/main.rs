@@ -31,16 +31,25 @@ fn main() {
     if &args[1].to_lowercase() == "build" {
         if args.len() > 2 {
             match args.get(2).map(|s| s.as_str()) {
-            Some("test") => {
-                let _ = build_bolt_project();
+            Some("bolt") => {
+                if args.len() > 4 {
+                    let _ = build_bolt_project(&args[3],&args[4]);
+                } else {
+                    helper(2);
+                }
             },
-            _ => println!("ok")
+            _ => helper(2)
         }
+        }else{
+            helper(2)
         }
         
+        
+    }else{
         helper(1)
     }
-
+    }else{
+        helper(1)
     }
     
 }
@@ -52,20 +61,53 @@ fn helper(id:u8){
     let ansi_escape: &str = "\x1b[0m";
     let ansi_white: &str = "\x1b[0;97m";
     if id == 1 {
-        println!("{}Cod commands\n{}  cod build{}",ansi_white,ansi_error,ansi_escape)
+        println!("\n{}Cod Commands:\n{}  cod build{}\n",ansi_white,ansi_error,ansi_escape)
+    }
+    if id == 2 {
+        println!("\n{}Cod Build Commands:\n{}  cod build bolt \"String project name\" \"Description of project\"{}\n",ansi_white,ansi_error,ansi_escape)
     }
 
 }
 
-fn build_bolt_project() -> std::io::Result<()>{
+
+
+
+
+
+fn build_bolt_project(name : &str, description : &str) -> std::io::Result<()>{
     //This is the beet json file
     let mut beet_json = File::options()
         .create(true)
-        .append(true)
-        .open("Test.json")?;
+        .write(true)
+        .open("beet.json")?;
+
+    let starting_json:String  = format!("{{\n \"name\":\"{}\",\n  \"description\":\"{}\",",name,description);
+    let ending_json: &str = r#"
+
+    "require": [
+        "bolt"
+    ],
+
+    "data_pack":{
+        "load": ["src"]
+    },
+    
+    "pipeline": [
+        "mecha"
+    ],
+    
 
 
-    let test: &str = "test";
-    writeln!(&mut beet_json, "test {}",test)?;
+    "output": "build",
+
+    "meta":{
+        "bolt":{
+            "entrypoint":["example:main"]
+        }
+    }
+    
+}"#;
+    
+    writeln!(&mut beet_json, "{}{}",starting_json,ending_json)?;
     Ok(())
 }

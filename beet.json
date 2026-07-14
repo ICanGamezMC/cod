@@ -1,0 +1,27 @@
+{
+ "name":"Test",
+  "description":"Testing",
+
+    "require": [
+        "bolt"
+    ],
+
+    "data_pack":{
+        "load": ["src"]
+    },
+    
+    "pipeline": [
+        "mecha"
+    ],
+    
+
+
+    "output": "build",
+
+    "meta":{
+        "bolt":{
+            "entrypoint":["example:main"]
+        }
+    }
+    
+    }
