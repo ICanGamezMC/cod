@@ -27,11 +27,14 @@ const ANSI_WHITE: &str = "\x1b[0;97m";
 const ANSI_GRAY: &str = "\x1b[0;38;5;8m";
 const ANSI_YELLOW_UNDERLINE: &str = "\x1b[4;93m";
 
+
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
     debugger();
     //dbg!(args);
+
 
     if args.len() > 1 {
         // This is the main build command. 
@@ -82,19 +85,50 @@ fn debugger() {
     } else{
         warning_message(1);
     }
+
+    if is_beet_installed() {
+        println!("{}Beet installed{}",ANSI_GRAY,ANSI_ESCAPE)
+    } else{
+        warning_message(2)
+    }
+    if is_bolt_installed() {
+        println!("{}Bolt installed{}",ANSI_GRAY,ANSI_ESCAPE)
+    } else{
+        warning_message(3)
+    }
 }
 
 
 fn warning_message(id:u8){
+    // ERROR MESSAGE FOR Python INSTALL
     if id == 1{
         println!(
         "\n{ANSI_ERROR}WARNING{ANSI_WHITE}: fatal python error
+    {ANSI_ERROR}Python is not installed.{ANSI_ESCAPE}
     {ANSI_GRAY}Visit this sight to download python: {ANSI_YELLOW_UNDERLINE}https://www.python.org/downloads/{ANSI_ESCAPE}
     {ANSI_GRAY}Or on linux install via command: {ANSI_YELLOW_UNDERLINE}sudo apt install python3{ANSI_ESCAPE} \n
         "
     )
     }
-    
+    // ERROR MESSAGE FOR Beet INSTALL
+    if id == 2{
+        println!(
+        "\n{ANSI_ERROR}WARNING{ANSI_WHITE}: fatal beet error
+    {ANSI_ERROR}Beet is not installed.{ANSI_ESCAPE}
+    {ANSI_GRAY}Visit this sight to install beet: {ANSI_YELLOW_UNDERLINE}https://mcbeet.dev/quick-start/get-started/#installation{ANSI_ESCAPE}
+    {ANSI_GRAY}Or on virtual environment install via command: {ANSI_YELLOW_UNDERLINE}pip install beet{ANSI_ESCAPE} \n
+        "
+    )
+    }
+    // ERROR MESSAGE FOR Bolt INSTALL
+    if id == 3{
+        println!(
+        "\n{ANSI_ERROR}WARNING{ANSI_WHITE}: fatal bolt error
+    {ANSI_ERROR}Bolt is not installed.{ANSI_ESCAPE}
+    {ANSI_GRAY}On virtual environment install via command: {ANSI_YELLOW_UNDERLINE}pip install bolt{ANSI_ESCAPE} \n
+        "
+    )
+    }
 }
 
 
@@ -159,8 +193,41 @@ fn is_python_installed() -> bool {
             .stderr(Stdio::null())
             .status();
 
-        if status.is_ok() {
-            return true;
+        if let Ok(exit_status) = status {
+            if exit_status.success(){
+                return true;
+            }
+        }
+    }
+    false
+
+}
+
+fn is_beet_installed() -> bool {
+    Command::new("beet")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+
+
+}
+
+fn is_bolt_installed() -> bool {
+    
+    for cmd in &["python3","python"] {
+        let status = Command::new(cmd)
+            .args(["-c", "import bolt"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+
+        if let Ok(exit_status) = status {
+            if exit_status.success(){
+                return true;
+            }
         }
     }
     false
