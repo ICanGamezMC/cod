@@ -21,10 +21,16 @@ creating new arguments for specific file types or project types!
 
 */
 
+const ANSI_ERROR: &str = "\x1b[1;31m";
+const ANSI_ESCAPE: &str = "\x1b[0m";
+const ANSI_WHITE: &str = "\x1b[0;97m";
+const ANSI_GRAY: &str = "\x1b[0;38;5;8m";
+const ANSI_YELLOW_UNDERLINE: &str = "\x1b[4;93m";
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
+    debugger();
     //dbg!(args);
 
     if args.len() > 1 {
@@ -58,19 +64,38 @@ fn main() {
 
 
 fn helper(id:u8){
-    let ansi_error: &str = "\x1b[1;31m";
-    let ansi_escape: &str = "\x1b[0m";
-    let ansi_white: &str = "\x1b[0;97m";
+
     if id == 1 {
-        println!("\n{}Cod Commands:\n{}  cod build{}\n",ansi_white,ansi_error,ansi_escape)
+        println!("\n{}Cod Commands:\n{}  cod build{}\n",ANSI_WHITE,ANSI_ERROR,ANSI_ESCAPE)
     }
     if id == 2 {
-        println!("\n{}Cod Build Commands:\n{}  cod build bolt \"String project name\" \"Description of project\"{}\n",ansi_white,ansi_error,ansi_escape)
+        println!("\n{}Cod Build Commands:\n{}  cod build bolt \"String project name\" \"Description of project\"{}\n",ANSI_WHITE,ANSI_ERROR,ANSI_ESCAPE)
     }
 
 }
 
 
+
+fn debugger() {
+    if is_python_installed() {
+        println!("{}Python installed{}",ANSI_GRAY,ANSI_ESCAPE)
+    } else{
+        warning_message(1);
+    }
+}
+
+
+fn warning_message(id:u8){
+    if id == 1{
+        println!(
+        "\n{ANSI_ERROR}WARNING{ANSI_WHITE}: fatal python error
+    {ANSI_GRAY}Visit this sight to download python: {ANSI_YELLOW_UNDERLINE}https://www.python.org/downloads/{ANSI_ESCAPE}
+    {ANSI_GRAY}Or on linux install via command: {ANSI_YELLOW_UNDERLINE}sudo apt install python3{ANSI_ESCAPE} \n
+        "
+    )
+    }
+    
+}
 
 
 
@@ -121,4 +146,23 @@ fn build_bolt_project(name : &str, description : &str) -> std::io::Result<()>{
     writeln!(&mut beet_json, "{}{}{}",starting_json,middle_json,ending_json)?;
     writeln!(&mut demo_bolt, "function template:main:\n  say Hello World")?;
     Ok(())
+}
+
+
+
+fn is_python_installed() -> bool {
+    
+    for cmd in &["python3","python"] {
+        let status = Command::new(cmd)
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+
+        if status.is_ok() {
+            return true;
+        }
+    }
+    false
+
 }
