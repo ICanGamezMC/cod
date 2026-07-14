@@ -26,7 +26,7 @@ const ANSI_ESCAPE: &str = "\x1b[0m";
 const ANSI_WHITE: &str = "\x1b[0;97m";
 const ANSI_GRAY: &str = "\x1b[0;38;5;8m";
 const ANSI_YELLOW_UNDERLINE: &str = "\x1b[4;93m";
-
+const ANSI_GREEN: &str = "\x1b[0;92m";
 
 
 fn main() {
@@ -45,17 +45,18 @@ fn main() {
                 if args.len() > 4 {
                     let _ = build_bolt_project(&args[3],&args[4]);
                 } else {
-                    helper(2);
+                    helper(3);
                 }
             },
-            _ => helper(2)
+            _ => helper(3)
         }
         }else{
             helper(2)
         }
-        
-        
-    }else{
+    }else if &args[1].to_lowercase() == "setup" {
+        create_virtual_env();
+    }
+    else{
         helper(1)
     }
     }else{
@@ -69,10 +70,23 @@ fn main() {
 fn helper(id:u8){
 
     if id == 1 {
-        println!("\n{}Cod Commands:\n{}  cod build{}\n",ANSI_WHITE,ANSI_ERROR,ANSI_ESCAPE)
+        println!("\n
+{ANSI_WHITE}Cod Commands:
+{ANSI_GREEN}  cod build {ANSI_GRAY} //Used for building a bolt/beet project.
+{ANSI_GREEN}  cod setup {ANSI_GRAY} //Used for installing bolt/beet in a python virtual environment.
+{ANSI_ESCAPE}\n")
     }
     if id == 2 {
-        println!("\n{}Cod Build Commands:\n{}  cod build bolt \"String project name\" \"Description of project\"{}\n",ANSI_WHITE,ANSI_ERROR,ANSI_ESCAPE)
+        println!("\n
+{ANSI_WHITE}Cod Build Commands:\n
+{ANSI_GREEN}  cod build bolt{ANSI_ESCAPE}
+{ANSI_GREEN}            ++++\n")
+    }
+    if id == 3 {
+        println!("\n
+{ANSI_WHITE}Cod Build Commands:\n
+{ANSI_GREEN}  cod build bolt \"Project name\" \"Description of project\"{ANSI_ESCAPE}
+{ANSI_GREEN}                 +++++++++++++++++++++++++++++++++++++++\n")
     }
 
 }
@@ -105,7 +119,7 @@ fn warning_message(id:u8){
         println!(
         "\n{ANSI_ERROR}WARNING{ANSI_WHITE}: fatal python error
     {ANSI_ERROR}Python is not installed.{ANSI_ESCAPE}
-    {ANSI_GRAY}Visit this sight to download python: {ANSI_YELLOW_UNDERLINE}https://www.python.org/downloads/{ANSI_ESCAPE}
+    {ANSI_GRAY}Visit this site to download python: {ANSI_YELLOW_UNDERLINE}https://www.python.org/downloads/{ANSI_ESCAPE}
     {ANSI_GRAY}Or on linux install via command: {ANSI_YELLOW_UNDERLINE}sudo apt install python3{ANSI_ESCAPE} \n
         "
     )
@@ -115,7 +129,7 @@ fn warning_message(id:u8){
         println!(
         "\n{ANSI_ERROR}WARNING{ANSI_WHITE}: fatal beet error
     {ANSI_ERROR}Beet is not installed.{ANSI_ESCAPE}
-    {ANSI_GRAY}Visit this sight to install beet: {ANSI_YELLOW_UNDERLINE}https://mcbeet.dev/quick-start/get-started/#installation{ANSI_ESCAPE}
+    {ANSI_GRAY}Visit this site to install beet: {ANSI_YELLOW_UNDERLINE}https://mcbeet.dev/quick-start/get-started/#installation{ANSI_ESCAPE}
     {ANSI_GRAY}Or on virtual environment install via command: {ANSI_YELLOW_UNDERLINE}pip install beet{ANSI_ESCAPE} \n
         "
     )
@@ -231,5 +245,34 @@ fn is_bolt_installed() -> bool {
         }
     }
     false
+
+}
+
+fn create_virtual_env(){
+    let python_exe = if cfg!(target_os = "windows"){
+        "python"
+    }else{
+        "python3"
+    };
+    let mut cmd = Command::new(python_exe);
+    cmd.arg("-m").arg("venv").arg(".venv");
+
+    match cmd.status() {
+        Ok(status) if status.success() => {
+            println!("Venv created")
+        }
+        Ok(status) =>{
+            eprintln!("Error {status}")
+        }
+        Err(e) => {
+            eprintln!("Error {e}")
+        }
+
+    }
+}
+
+fn source_env(){
+    let current_dir
+
 
 }
