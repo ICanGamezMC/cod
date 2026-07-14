@@ -1,7 +1,8 @@
 use std::env;
 use std::fs::File;
 use std::io::Write;
-
+use std::fs;
+use std::process::{Command, Stdio};
 
 /*
 This should be running the command like
@@ -75,14 +76,25 @@ fn helper(id:u8){
 
 
 fn build_bolt_project(name : &str, description : &str) -> std::io::Result<()>{
+
+    let project_dir = format!("src/data/{}/modules",name.to_lowercase().replace(" ", "_"));
+    fs::create_dir_all(project_dir)?;
+
+    let main_bolt = format!("src/data/{}/modules/main.bolt",name.to_lowercase().replace(" ", "_"));
+
     //This is the beet json file
     let mut beet_json = File::options()
         .create(true)
         .write(true)
         .open("beet.json")?;
 
+    let mut demo_bolt = File::options()
+        .create(true)
+        .write(true)
+        .open(main_bolt)?;
+
     let starting_json:String  = format!("{{\n \"name\":\"{}\",\n  \"description\":\"{}\",",name,description);
-    let ending_json: &str = r#"
+    let middle_json: &str = r#"
 
     "require": [
         "bolt"
@@ -101,13 +113,12 @@ fn build_bolt_project(name : &str, description : &str) -> std::io::Result<()>{
     "output": "build",
 
     "meta":{
-        "bolt":{
-            "entrypoint":["example:main"]
-        }
-    }
+        "#;
+
+    let ending_json:String  = format!("        \"bolt\":{{\n            \"entrypoint\":[\"{}:main\"]\n        }}\n    }}\n}}",name.to_lowercase().replace(" ", "_"));
+
     
-}"#;
-    
-    writeln!(&mut beet_json, "{}{}",starting_json,ending_json)?;
+    writeln!(&mut beet_json, "{}{}{}",starting_json,middle_json,ending_json)?;
+    writeln!(&mut demo_bolt, "function template:main:\n  say Hello World")?;
     Ok(())
 }
