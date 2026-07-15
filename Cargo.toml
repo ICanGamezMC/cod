@@ -2,6 +2,31 @@
 name = "cod"
 version = "0.1.0"
 edition = "2024"
-
+authors = ["ICanGamezMC"]
+license = "MIT"
+description = "A CLI toolkit for easy setting up for beet/bolt projects."
 [dependencies]
 
+
+[package.metadata.deb]
+maintainer = "ICanGamez <noreply@github.com>"
+copyright = "2026, ICanGamez"
+extended-description = """\
+A CLI toolkit for easy setting up for beet/bolt projects."""
+
+assets = [
+    ["target/release/cod", "usr/bin/cod", "755"],
+]
+
+
+[package.metadata.rpm]
+package = "cod"
+
+[[package.metadata.rpm.targets]]
+name = "cod"
+path = "/usr/bin/cod"
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/cod", dest = "/usr/bin/cod", mode = "0755" }
+]

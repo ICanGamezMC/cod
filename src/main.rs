@@ -291,6 +291,8 @@ fn get_python_path() -> &'static str {
     }
 }
 
+//Pov the caffien kicked in here
+
 fn is_package_installed(package_name: &str) -> bool {
     let python_path = get_python_path();
 
