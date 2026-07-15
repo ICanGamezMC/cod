@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Write;
 use std::fs;
 use std::process::{Command, Stdio};
-
+use std::path::Path;
 /*
 This should be running the command like
 
@@ -18,6 +18,8 @@ cod document "NAME OF FILE" --optional_flags
 
 optional_flags are for
 creating new arguments for specific file types or project types!
+
+Honestly the setup is actually so dope, im tweaking tf out.
 
 */
 
@@ -55,6 +57,14 @@ fn main() {
         }
     }else if &args[1].to_lowercase() == "setup" {
         create_virtual_env();
+        
+        if !is_beet_installed(){
+            install_dependency("beet");
+        }
+        if !is_bolt_installed(){
+            install_dependency("bolt");
+        }
+
     }
     else{
         helper(1)
@@ -87,6 +97,12 @@ fn helper(id:u8){
 {ANSI_WHITE}Cod Build Commands:\n
 {ANSI_GREEN}  cod build bolt \"Project name\" \"Description of project\"{ANSI_ESCAPE}
 {ANSI_GREEN}                 +++++++++++++++++++++++++++++++++++++++\n")
+    }
+        if id == 4 {
+        println!("\n
+{ANSI_WHITE}USE THIS COMMAND:
+{ANSI_GREEN}  cod setup {ANSI_GRAY}//Used for installing bolt/beet in a python virtual environment.{ANSI_ESCAPE}
+")
     }
 
 }
@@ -142,6 +158,10 @@ fn warning_message(id:u8){
     {ANSI_GRAY}On virtual environment install via command: {ANSI_YELLOW_UNDERLINE}pip install bolt{ANSI_ESCAPE} \n
         "
     )
+    }
+
+    if id == 3 || id == 4 {
+        helper(4)
     }
 }
 
@@ -218,34 +238,11 @@ fn is_python_installed() -> bool {
 }
 
 fn is_beet_installed() -> bool {
-    Command::new("beet")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false)
-
-
+    is_package_installed("beet")
 }
 
 fn is_bolt_installed() -> bool {
-    
-    for cmd in &["python3","python"] {
-        let status = Command::new(cmd)
-            .args(["-c", "import bolt"])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
-
-        if let Ok(exit_status) = status {
-            if exit_status.success(){
-                return true;
-            }
-        }
-    }
-    false
-
+    is_package_installed("bolt")
 }
 
 fn create_virtual_env(){
@@ -271,8 +268,60 @@ fn create_virtual_env(){
     }
 }
 
-fn source_env(){
-    let current_dir
 
+fn get_pip_path() -> &'static str {
+    #[cfg(target_os = "windows")]
+    {
+        ".venv\\Scripts\\pip.exe"
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        ".venv/bin/pip"
+    }
+}
 
+fn get_python_path() -> &'static str {
+    #[cfg(target_os = "windows")] 
+    { 
+        ".venv\\Scripts\\python.exe" 
+    }
+    #[cfg(not(target_os = "windows"))] 
+    {
+         ".venv/bin/python" 
+    }
+}
+
+fn is_package_installed(package_name: &str) -> bool {
+    let python_path = get_python_path();
+
+    // If the .venv doesn't even exist yet, nothing is installed
+    if !Path::new(python_path).exists() {
+        return false;
+    }
+
+    // Run the local python to see if we can import the package
+    let status = Command::new(python_path)
+        .args(["-c", &format!("import {}", package_name)])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+
+    match status {
+        Ok(exit_status) => exit_status.success(),
+        Err(_) => false,
+    }
+}
+
+fn install_dependency(package_name: &str) -> bool{
+
+   let pip_path = get_pip_path();
+
+   println!("Installing {}...",package_name);
+
+   let status = Command::new(pip_path)
+        .args(&["install", package_name])
+        .status()
+        .expect("Failed to execute pip process");
+
+    status.success()
 }
