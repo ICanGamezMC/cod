@@ -4,6 +4,7 @@ use std::io::Write;
 use std::fs;
 use std::process::{Command, Stdio};
 use std::path::Path;
+
 /*
 This should be running the command like
 
@@ -34,7 +35,9 @@ const ANSI_GREEN: &str = "\x1b[0;92m";
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    debugger();
+    if !is_python_installed() || !is_beet_installed() || !is_bolt_installed(){
+        debugger();
+    }
     //dbg!(args);
 
 
@@ -66,13 +69,42 @@ fn main() {
         }
 
     }
+    else if &args[1].to_lowercase() == "doc" {
+
+
+    }
+
+
     else{
         helper(1)
     }
-    }else{
+    }else if is_beet_installed() && is_bolt_installed(){
         helper(1)
     }
     
+}
+
+
+
+fn create_doc(path:&Path){
+    let bolt = fs::read_to_string(path)?;
+    let markdown = parse_bolt_to_md(&bolt);
+}
+
+// Chat, this parses that bolt code into md, just by making a few changes for now!
+fn parse_bolt_to_md(source: &str) -> String{
+    let mut output = String::new();
+    let mut in_code = false; //might change to struct if things get more complex
+
+    for line in source.lines(){
+        if line.trim_start().starts_with('#'){
+            if in_code{
+                output.push_str("```\n\n");
+                in_code = false;
+            }
+        }
+    }
+    output
 }
 
 

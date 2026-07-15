@@ -1,6 +1,6 @@
 {
- "name":"TEST",
-  "description":"TESTING STUFF",
+ "name":"test",
+  "description":"testing",
 
     "require": [
         "bolt"
