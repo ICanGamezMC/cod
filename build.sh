@@ -51,3 +51,4 @@ cp "target/x86_64-apple-darwin/release/${BIN_NAME}" "dist/${BIN_NAME}-macos-amd6
 
 echo "=== Done! Your compiled binaries are in the ./dist/ folder: ==="
 ls -l dist/
+chmod +x dist/*
