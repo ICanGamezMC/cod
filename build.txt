@@ -1,0 +1,1 @@
+sudo curl -L https://raw.githubusercontent.com/ICanGamezMC/cod/main/dist/cod-linux-amd64 -o /usr/local/bin/cod && sudo chmod +x /usr/local/bin/cod
