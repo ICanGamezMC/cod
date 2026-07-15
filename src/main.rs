@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, io};
 use std::fs::File;
 use std::io::Write;
 use std::fs;
@@ -71,7 +71,9 @@ fn main() {
     }
     else if &args[1].to_lowercase() == "doc" {
 
-
+        if let Err(e) = find_bolt_files(Path::new("src/data")) {
+            eprintln!("Documentation generation failed: {}", e);
+        }
     }
 
 
@@ -86,9 +88,13 @@ fn main() {
 
 
 
-fn create_doc(path:&Path){
+fn create_doc(path:&Path) -> io::Result<()>{
     let bolt = fs::read_to_string(path)?;
     let markdown = parse_bolt_to_md(&bolt);
+
+    fs::write(path.with_extension("md"), markdown)?;
+
+    Ok(())
 }
 
 // Chat, this parses that bolt code into md, just by making a few changes for now!
@@ -102,11 +108,42 @@ fn parse_bolt_to_md(source: &str) -> String{
                 output.push_str("```\n\n");
                 in_code = false;
             }
+            output.push_str(line);
+            output.push('\n');
+        } else {
+            if !in_code {
+                output.push_str("```mcfunction\n");
+                in_code = true;
+            }
+            output.push_str(line);
+            output.push('\n');
         }
+    }
+    if in_code {
+        output.push_str("```\n");
     }
     output
 }
 
+
+//This is a godsend, does an reading for every .bolt file in dir
+fn find_bolt_files(dir:&Path)-> io::Result<()>{
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            find_bolt_files(&path)?;
+        } else if path.extension().is_some_and(|ext| ext == "bolt") {
+            println!("{}", path.display());
+
+            create_doc(&path)?;
+        }
+    }
+
+    Ok(())
+
+}
 
 
 fn helper(id:u8){
