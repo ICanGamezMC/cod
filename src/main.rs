@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::Write;
 use std::fs;
 use std::process::{Command, Stdio};
-use std::path::Path;
-
+use std::path::{Path, PathBuf};
+use std::thread;
 /*
 This should be running the command like
 
@@ -31,14 +31,15 @@ const ANSI_GRAY: &str = "\x1b[0;38;5;8m";
 const ANSI_YELLOW_UNDERLINE: &str = "\x1b[4;93m";
 const ANSI_GREEN: &str = "\x1b[0;92m";
 
+/*
+Main function for calling, grabbing and processing the CLI commands,
+main things for this are the args being used and the checks for errors.
 
+*/
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if !is_python_installed() || !is_beet_installed() || !is_bolt_installed(){
-        debugger();
-    }
-    //dbg!(args);
+    //dbg!(&args);
 
 
     if args.len() > 1 {
@@ -48,6 +49,9 @@ fn main() {
             match args.get(2).map(|s| s.as_str()) {
             Some("bolt") => {
                 if args.len() > 4 {
+                    if !is_beet_installed() || !is_bolt_installed() {
+                        debugger();
+                    }
                     let _ = build_bolt_project(&args[3],&args[4]);
                 } else {
                     helper(3);
@@ -59,6 +63,10 @@ fn main() {
             helper(2)
         }
     }else if &args[1].to_lowercase() == "setup" {
+        if !is_python_installed() {
+                warning_message(1);
+                return;
+            }
         create_virtual_env();
         
         if !is_beet_installed(){
@@ -71,20 +79,36 @@ fn main() {
     }
     else if &args[1].to_lowercase() == "doc" {
 
-        if let Err(e) = find_bolt_files(Path::new("src/data")) {
+        if let Err(e) = run_doc_generation(Path::new("./src/data")) {
             eprintln!("Documentation generation failed: {}", e);
         }
+        helper(5);
     }
 
 
     else{
         helper(1)
     }
-    }else if is_beet_installed() && is_bolt_installed(){
+    }else {
         helper(1)
     }
     
 }
+
+
+
+
+
+
+/*
+
+Below is the doc command being used
+Tried my best to make it really fast for them big projects.
+
+
+*/
+
+
 
 
 
@@ -98,52 +122,160 @@ fn create_doc(path:&Path) -> io::Result<()>{
 }
 
 // Chat, this parses that bolt code into md, just by making a few changes for now!
-fn parse_bolt_to_md(source: &str) -> String{
-    let mut output = String::new();
-    let mut in_code = false; //might change to struct if things get more complex
+// Post update, ts is faster than vscode can render :o
+struct BoltDocParser {
+    output: String,
+    in_code: bool,
+}
 
-    for line in source.lines(){
-        if line.trim_start().starts_with('#'){
-            if in_code{
-                output.push_str("```\n\n");
-                in_code = false;
-            }
-            output.push_str(line);
-            output.push('\n');
-        } else {
-            if !in_code {
-                output.push_str("```mcfunction\n");
-                in_code = true;
-            }
-            output.push_str(line);
-            output.push('\n');
+//Pov 
+impl BoltDocParser {
+    fn new(capacity: usize) -> Self {
+        Self {
+            // Gives allocated memory so I don't have any slowdowns for big projects!
+            output: String::with_capacity(capacity + 512),
+            in_code: false,
         }
     }
-    if in_code {
-        output.push_str("```\n");
+
+    fn open_code(&mut self) {
+        if !self.in_code {
+            self.output.push_str("```python\n");
+            self.in_code = true;
+        }
     }
-    output
+
+    fn close_code(&mut self) {
+        if self.in_code {
+            self.output.push_str("```\n\n");
+            self.in_code = false;
+        }
+    }
+
+    // Lets lines that are commented return as .md formatting!
+    fn parse_line(&mut self, line: &str) {
+        let trimmed = line.trim_start();
+
+        match trimmed {
+            s if s.starts_with("#h1") => {
+                self.close_code();
+                self.output.push_str("#");
+                self.output.push_str(s.strip_prefix("#h1").unwrap());
+                self.output.push_str("  \n");
+            }
+            s if s.starts_with("#h2") => {
+                self.close_code();
+                self.output.push_str("##");
+                self.output.push_str(s.strip_prefix("#h2").unwrap());
+                self.output.push_str("  \n");
+            }
+            s if s.starts_with("#h3") => {
+                self.close_code();
+                self.output.push_str("###");
+                self.output.push_str(s.strip_prefix("#h3").unwrap());
+                self.output.push_str("  \n");
+            }
+            s if s.starts_with("\\#") => {
+                self.open_code();
+                self.output.push_str(&s[1..]);
+                self.output.push_str("  \n");
+            }
+            s if s.starts_with('#') => {
+                self.close_code();
+                self.output.push_str(s.strip_prefix('#').unwrap().trim_start());
+                self.output.push_str("  \n");
+            }
+            _ => {
+                self.open_code();
+                self.output.push_str(line);
+                self.output.push_str("  \n");
+            }
+        }
+    }
+
+    fn finish(mut self) -> String {
+        self.close_code();
+        self.output
+    }
+}
+
+//This just uses that struct to parse through each line.
+fn parse_bolt_to_md(source: &str) -> String {
+    let mut parser = BoltDocParser::new(source.len());
+
+    for line in source.lines() {
+        parser.parse_line(line);
+    }
+
+    parser.finish()
 }
 
 
 //This is a godsend, does an reading for every .bolt file in dir
-fn find_bolt_files(dir:&Path)-> io::Result<()>{
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
+fn find_bolt_files(dir: &Path) -> io::Result<Vec<PathBuf>> {
+    let mut paths = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
 
-        if path.is_dir() {
-            find_bolt_files(&path)?;
-        } else if path.extension().is_some_and(|ext| ext == "bolt") {
-            println!("{}", path.display());
-
-            create_doc(&path)?;
+    while let Some(current_dir) = stack.pop() {
+        if let Ok(entries) = fs::read_dir(current_dir) {
+            for entry in entries.filter_map(Result::ok) {
+                let path = entry.path();
+                if path.is_dir() {
+                    // Get the folder name to check if we should skip it cuz it makes it like 1 micro second faster
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        // Skip hidden folders (.git, .venv), rust build targets, and node_modules
+                        if name.starts_with('.') 
+                            || name == "target" 
+                            || name == "node_modules" 
+                            || name == "venv" 
+                        {
+                            continue; 
+                        }
+                    }
+                    stack.push(path);
+                } else if path.extension().is_some_and(|ext| ext == "bolt") {
+                    paths.push(path);
+                }
+            }
         }
     }
+    Ok(paths)
+}
+
+
+//Learned how to use multithreading in rust for this one
+//
+pub fn run_doc_generation(dir: &Path) -> io::Result<()> {
+    let paths = find_bolt_files(dir)?;
+    if paths.is_empty() {
+        return Ok(());
+    }
+
+    // Making multiple threads, and if failed, just make it 4
+    let num_threads = thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4);
+
+    // standard library cmp came in clutch here, but only here :p
+    let chunk_size = std::cmp::max(1, (paths.len() + num_threads - 1) / num_threads);
+
+    // Scoped threads let this run work in parallel using references!!
+    thread::scope(|s| {
+        for chunk in paths.chunks(chunk_size) {
+            s.spawn(move || {
+                for path in chunk {
+                    println!("{}", path.display());
+                    if let Err(e) = create_doc(path) {
+                        eprintln!("Failed to document {}: {}", path.display(), e);
+                    }
+                }
+            });
+        }
+    });
 
     Ok(())
-
 }
+
 
 
 fn helper(id:u8){
@@ -153,6 +285,7 @@ fn helper(id:u8){
 {ANSI_WHITE}Cod Commands:
 {ANSI_GREEN}  cod build {ANSI_GRAY} //Used for building a bolt/beet project.
 {ANSI_GREEN}  cod setup {ANSI_GRAY} //Used for installing bolt/beet in a python virtual environment.
+{ANSI_GREEN}  cod doc {ANSI_GRAY} //Used to auto document code in a bolt/beet project.
 {ANSI_ESCAPE}\n")
     }
     if id == 2 {
@@ -171,6 +304,12 @@ fn helper(id:u8){
         println!("\n
 {ANSI_WHITE}USE THIS COMMAND:
 {ANSI_GREEN}  cod setup {ANSI_GRAY}//Used for installing bolt/beet in a python virtual environment.{ANSI_ESCAPE}
+")
+    }
+    if id == 5 {
+        println!("\n
+{ANSI_WHITE}Finished Cod Doc:
+{ANSI_GRAY}     *Vscode or intellij will take a bit to update the space.{ANSI_ESCAPE}
 ")
     }
 
@@ -237,7 +376,27 @@ fn warning_message(id:u8){
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 fn build_bolt_project(name : &str, description : &str) -> std::io::Result<()>{
+
+    //This is for grabbing more data when building the project
+    let mut input = String::new();
+
+
+
+    io::stdin().read_line(&mut input).expect("Failed to read line");
+
+
 
     let project_dir = format!("src/data/{}/modules",name.to_lowercase().replace(" ", "_"));
     fs::create_dir_all(project_dir)?;
@@ -284,6 +443,21 @@ fn build_bolt_project(name : &str, description : &str) -> std::io::Result<()>{
     writeln!(&mut demo_bolt, "function template:main:\n  say Hello World")?;
     Ok(())
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
