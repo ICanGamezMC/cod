@@ -31,6 +31,11 @@ pub fn build_bolt_file_basic(name:&str,description:&str) -> String{
     }
 }
 
+
+
+
+
+
     
     "#;
 
@@ -71,6 +76,12 @@ pub fn build_bolt_file_resourcepack(name:&str,description:&str) -> String{
   }
 }
 
+
+
+
+
+
+
     
     "#;
 
@@ -105,6 +116,12 @@ pub fn build_bolt_file_version(name:&str,description:&str,version:&str) -> Strin
     }
   }
 }
+
+
+
+
+
+
 
     
     "#;
@@ -146,6 +163,11 @@ pub fn build_bolt_file_all(name:&str,description:&str,version:&str) -> String{
     }
   }
 }
+
+
+
+
+
 
     
     "#;

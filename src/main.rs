@@ -115,7 +115,7 @@ fn create_doc(path:&Path) -> io::Result<()>{
     let bolt = fs::read_to_string(path)?;
     let markdown = parse_bolt_to_md(&bolt);
 
-    fs::write(path.with_extension("md"), markdown)?;
+    handle(fs::write(path.with_extension("md"), markdown),21)?;
 
     Ok(())
 }
@@ -317,7 +317,7 @@ fn helper(id:u8){
         println!("
 {ANSI_WHITE}Type number for settings:
 {ANSI_GREEN}[0]  {ANSI_GRAY}//Skip This Step{ANSI_ESCAPE}
-{ANSI_GREEN}[1]  {ANSI_GRAY}//Create template resourcepack{ANSI_ESCAPE}
+{ANSI_GREEN}[1]  {ANSI_GRAY}//Create with template resourcepack{ANSI_ESCAPE}
 {ANSI_GREEN}[2]  {ANSI_GRAY}//Create version controlled datapack{ANSI_ESCAPE}
 {ANSI_GREEN}[3]  {ANSI_GRAY}//All the above{ANSI_ESCAPE}
 ")
@@ -345,6 +345,16 @@ fn debugger() {
         warning_message(3)
     }
 }
+
+
+/*
+Error messages and warning stuff are the same in my book
+
+1-19 is user generated errors, can be fixed
+20-29 is software generated errors, just reload or restart
+40-59 is errors that could break the program, repeatable and broken
+
+*/
 
 
 fn warning_message(id:u8){
@@ -388,7 +398,18 @@ fn warning_message(id:u8){
         .number(5)
         .print();
     }
-
+    if id == 6{
+        error_msg::new("Overwrite Error")
+        .description("Ran cod build twice and it can have a chance of overwriting data where is should not be.\nDouble check beet.json for errors.")
+        .number(6)
+        .print();
+    }
+    if id == 21{
+        error_msg::new("Fatal Create File Error")
+        .description("This error .")
+        .number(21)
+        .print();
+    }
     if id == 2 || id == 3 {
         helper(4)
     }
@@ -396,7 +417,12 @@ fn warning_message(id:u8){
 
 
 
-
+fn handle<T>(result: io::Result<T>, id: u8) -> io::Result<T>{
+    result.map_err(|e| {
+        warning_message(id);
+        e
+    })
+}
 
 
 
@@ -471,9 +497,12 @@ fn build_bolt_project(name : &str, description : &str) -> std::io::Result<()>{
                         debugger();
     }
 
-    
-    writeln!(&mut beet_json, "{}",json)?;
-    writeln!(&mut demo_bolt, "function template:main:\n  say Hello World")?;
+    if Path::new("beet.json").is_file() {
+        warning_message(6);
+    }
+
+    handle(writeln!(&mut beet_json, "{}",json),21)?;
+    handle(writeln!(&mut demo_bolt, "function template:main:\n  say Hello World"),21)?;
     Ok(())
 }
 
