@@ -5,6 +5,11 @@ use std::fs;
 use std::process::{Command, Stdio};
 use std::path::{Path, PathBuf};
 use std::thread;
+
+mod error;
+use error::error_msg;
+mod build_file;
+use build_file::{build_bolt_file_basic,build_bolt_file_resourcepack,build_bolt_file_version,build_bolt_file_all};
 /*
 This should be running the command like
 
@@ -24,11 +29,9 @@ Honestly the setup is actually so dope, im tweaking tf out.
 
 */
 
-const ANSI_ERROR: &str = "\x1b[1;31m";
 const ANSI_ESCAPE: &str = "\x1b[0m";
 const ANSI_WHITE: &str = "\x1b[0;97m";
 const ANSI_GRAY: &str = "\x1b[0;38;5;8m";
-const ANSI_YELLOW_UNDERLINE: &str = "\x1b[4;93m";
 const ANSI_GREEN: &str = "\x1b[0;92m";
 
 /*
@@ -49,9 +52,6 @@ fn main() {
             match args.get(2).map(|s| s.as_str()) {
             Some("bolt") => {
                 if args.len() > 4 {
-                    if !is_beet_installed() || !is_bolt_installed() {
-                        debugger();
-                    }
                     let _ = build_bolt_project(&args[3],&args[4]);
                 } else {
                     helper(3);
@@ -82,7 +82,6 @@ fn main() {
         if let Err(e) = run_doc_generation(Path::new("./src/data")) {
             eprintln!("Documentation generation failed: {}", e);
         }
-        helper(5);
     }
 
 
@@ -229,6 +228,7 @@ fn find_bolt_files(dir: &Path) -> io::Result<Vec<PathBuf>> {
                             || name == "node_modules" 
                             || name == "venv" 
                         {
+                            
                             continue; 
                         }
                     }
@@ -248,6 +248,7 @@ fn find_bolt_files(dir: &Path) -> io::Result<Vec<PathBuf>> {
 pub fn run_doc_generation(dir: &Path) -> io::Result<()> {
     let paths = find_bolt_files(dir)?;
     if paths.is_empty() {
+        warning_message(5);
         return Ok(());
     }
 
@@ -272,7 +273,7 @@ pub fn run_doc_generation(dir: &Path) -> io::Result<()> {
             });
         }
     });
-
+    helper(5);
     Ok(())
 }
 
@@ -281,7 +282,7 @@ pub fn run_doc_generation(dir: &Path) -> io::Result<()> {
 fn helper(id:u8){
 
     if id == 1 {
-        println!("\n
+        println!("
 {ANSI_WHITE}Cod Commands:
 {ANSI_GREEN}  cod build {ANSI_GRAY} //Used for building a bolt/beet project.
 {ANSI_GREEN}  cod setup {ANSI_GRAY} //Used for installing bolt/beet in a python virtual environment.
@@ -289,27 +290,36 @@ fn helper(id:u8){
 {ANSI_ESCAPE}\n")
     }
     if id == 2 {
-        println!("\n
+        println!("
 {ANSI_WHITE}Cod Build Commands:\n
 {ANSI_GREEN}  cod build bolt{ANSI_ESCAPE}
 {ANSI_GREEN}            ++++\n")
     }
     if id == 3 {
-        println!("\n
+        println!("
 {ANSI_WHITE}Cod Build Commands:\n
 {ANSI_GREEN}  cod build bolt \"Project name\" \"Description of project\"{ANSI_ESCAPE}
 {ANSI_GREEN}                 +++++++++++++++++++++++++++++++++++++++\n")
     }
         if id == 4 {
-        println!("\n
+        println!("
 {ANSI_WHITE}USE THIS COMMAND:
 {ANSI_GREEN}  cod setup {ANSI_GRAY}//Used for installing bolt/beet in a python virtual environment.{ANSI_ESCAPE}
 ")
     }
     if id == 5 {
-        println!("\n
+        println!("
 {ANSI_WHITE}Finished Cod Doc:
 {ANSI_GRAY}     *Vscode or intellij will take a bit to update the space.{ANSI_ESCAPE}
+")
+    }
+    if id == 6 {
+        println!("
+{ANSI_WHITE}Type number for settings:
+{ANSI_GREEN}[0]  {ANSI_GRAY}//Skip This Step{ANSI_ESCAPE}
+{ANSI_GREEN}[1]  {ANSI_GRAY}//Create template resourcepack{ANSI_ESCAPE}
+{ANSI_GREEN}[2]  {ANSI_GRAY}//Create version controlled datapack{ANSI_ESCAPE}
+{ANSI_GREEN}[3]  {ANSI_GRAY}//All the above{ANSI_ESCAPE}
 ")
     }
 
@@ -340,35 +350,46 @@ fn debugger() {
 fn warning_message(id:u8){
     // ERROR MESSAGE FOR Python INSTALL
     if id == 1{
-        println!(
-        "\n{ANSI_ERROR}WARNING{ANSI_WHITE}: fatal python error
-    {ANSI_ERROR}Python is not installed.{ANSI_ESCAPE}
-    {ANSI_GRAY}Visit this site to download python: {ANSI_YELLOW_UNDERLINE}https://www.python.org/downloads/{ANSI_ESCAPE}
-    {ANSI_GRAY}Or on linux install via command: {ANSI_YELLOW_UNDERLINE}sudo apt install python3{ANSI_ESCAPE} \n
-        "
-    )
+
+        error_msg::new("Fatal Python Error")
+        .description("Python is not installed.")
+        .number(1)
+        .helper("Visit this site to download python: https://www.python.org/downloads/\nOr on linux install via command: sudo apt install python3")
+        .print();
+        
     }
     // ERROR MESSAGE FOR Beet INSTALL
     if id == 2{
-        println!(
-        "\n{ANSI_ERROR}WARNING{ANSI_WHITE}: fatal beet error
-    {ANSI_ERROR}Beet is not installed.{ANSI_ESCAPE}
-    {ANSI_GRAY}Visit this site to install beet: {ANSI_YELLOW_UNDERLINE}https://mcbeet.dev/quick-start/get-started/#installation{ANSI_ESCAPE}
-    {ANSI_GRAY}Or on virtual environment install via command: {ANSI_YELLOW_UNDERLINE}pip install beet{ANSI_ESCAPE} \n
-        "
-    )
+        error_msg::new("Fatal Beet Error")
+        .description("Beet is not installed.")
+        .number(2)
+        .helper("Visit this site to install beet:  https://mcbeet.dev/quick-start/get-started/#installation\nOr on virtual environment install via command: pip install beet")
+        .print();
     }
     // ERROR MESSAGE FOR Bolt INSTALL
     if id == 3{
-        println!(
-        "\n{ANSI_ERROR}WARNING{ANSI_WHITE}: fatal bolt error
-    {ANSI_ERROR}Bolt is not installed.{ANSI_ESCAPE}
-    {ANSI_GRAY}On virtual environment install via command: {ANSI_YELLOW_UNDERLINE}pip install bolt{ANSI_ESCAPE} \n
-        "
-    )
+        error_msg::new("Fatal Bolt Error")
+        .description("Beet is not installed.")
+        .number(3)
+        .helper("On virtual environment install via command: pip install bolt")
+        .print();
     }
 
-    if id == 3 || id == 4 {
+    if id == 4{
+        error_msg::new("Settings Error")
+        .description("Typed an incorrect value for cod build settings.\nDefaulting to generic template.")
+        .number(4)
+        .print();
+    }
+
+    if id == 5{
+        error_msg::new("Documentation Error")
+        .description("There is no .bolt files to document.")
+        .number(5)
+        .print();
+    }
+
+    if id == 2 || id == 3 {
         helper(4)
     }
 }
@@ -390,14 +411,14 @@ fn warning_message(id:u8){
 fn build_bolt_project(name : &str, description : &str) -> std::io::Result<()>{
 
     //This is for grabbing more data when building the project
-    let mut input = String::new();
+    let mut build_id = String::new();
 
 
+    helper(6);
+    io::stdin().read_line(&mut build_id).expect("Failed to read line");
+    
 
-    io::stdin().read_line(&mut input).expect("Failed to read line");
-
-
-
+    let asset_dir = "src/assets/minecraft/textures";
     let project_dir = format!("src/data/{}/modules",name.to_lowercase().replace(" ", "_"));
     fs::create_dir_all(project_dir)?;
 
@@ -405,41 +426,53 @@ fn build_bolt_project(name : &str, description : &str) -> std::io::Result<()>{
 
     //This is the beet json file
     let mut beet_json = File::options()
+        .append(false)
         .create(true)
         .write(true)
         .open("beet.json")?;
 
     let mut demo_bolt = File::options()
+        .append(false)
         .create(true)
         .write(true)
         .open(main_bolt)?;
-
-    let starting_json:String  = format!("{{\n \"name\":\"{}\",\n  \"description\":\"{}\",",name,description);
-    let middle_json: &str = r#"
-
-    "require": [
-        "bolt"
-    ],
-
-    "data_pack":{
-        "load": ["src"]
-    },
-    
-    "pipeline": [
-        "mecha"
-    ],
     
 
+    let json = match *&build_id.to_string().as_str().trim(){
+        "0" => {
+            build_bolt_file_basic(name,description)
+        }
 
-    "output": "build",
+        "1" => {
+            fs::create_dir_all(asset_dir)?;
+            build_bolt_file_resourcepack(name,description)
 
-    "meta":{
-        "#;
-
-    let ending_json:String  = format!("        \"bolt\":{{\n            \"entrypoint\":[\"{}:main\"]\n        }}\n    }}\n}}",name.to_lowercase().replace(" ", "_"));
+        }
+        "2" => {
+            println!("Input Pack Format: ");
+            let mut version: String = String::new();
+            io::stdin().read_line(&mut version).expect("Failed to read line");
+            build_bolt_file_version(name,description,&version.to_string().as_str().trim())
+        }
+        "3" => {
+            println!("Input Pack Format: ");
+            let mut version: String = String::new();
+            io::stdin().read_line(&mut version).expect("Failed to read line");
+            fs::create_dir_all(asset_dir)?;
+            build_bolt_file_all(name,description,&version.to_string().as_str().trim())
+        }
+        _ => {
+            warning_message(4);
+            build_bolt_file_basic("template","template description")
+        }
+    };
+    
+    if !is_beet_installed() || !is_bolt_installed() {
+                        debugger();
+    }
 
     
-    writeln!(&mut beet_json, "{}{}{}",starting_json,middle_json,ending_json)?;
+    writeln!(&mut beet_json, "{}",json)?;
     writeln!(&mut demo_bolt, "function template:main:\n  say Hello World")?;
     Ok(())
 }
